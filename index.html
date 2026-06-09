@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Card Trade Board</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Card Trade Board</p>
+          <h1>ショップ / TRADE募集</h1>
+        </div>
+        <nav class="page-switch" aria-label="ページ切り替え">
+          <button class="switch-button is-active" type="button" data-view="shop">ショップ</button>
+          <button class="switch-button" type="button" data-view="trade">TRADE募集</button>
+          <button class="switch-button" type="button" data-view="history">取引履歴</button>
+        </nav>
+      </header>
+
+      <div id="historyStatsRoot" class="history-stats-root" hidden></div>
+
+      <section class="controls-panel" aria-label="絞り込みと並び替え">
+        <label class="search-box">
+          <span>検索</span>
+          <input id="searchInput" type="search" placeholder="カード名・備考・タグ">
+        </label>
+
+        <label class="select-box">
+          <span>並び替え</span>
+          <select id="sortSelect">
+            <option value="updated-desc">更新が新しい順</option>
+            <option value="amount-asc">金額が低い順</option>
+            <option value="amount-desc">金額が高い順</option>
+            <option value="name-asc">名前順</option>
+          </select>
+        </label>
+
+        <label class="toggle-box">
+          <input id="groupToggle" type="checkbox">
+          <span>タグ別表示</span>
+        </label>
+      </section>
+
+      <div id="tagRail" class="tag-rail" aria-label="タグ"></div>
+      <main id="listRoot" class="list-root" aria-live="polite"></main>
+    </div>
+
+    <div class="edit-cluster">
+      <div id="editActions" class="edit-actions" hidden>
+        <button id="addItemButton" class="secondary-action" type="button">追加</button>
+        <button id="lockButton" class="secondary-action" type="button">終了</button>
+      </div>
+      <button id="editButton" class="edit-button" type="button" aria-haspopup="dialog">編集</button>
+    </div>
+
+    <dialog id="authDialog" class="modal">
+      <form id="authForm" class="modal-card" method="dialog">
+        <div class="modal-head">
+          <h2>編集パスワード</h2>
+          <button class="icon-close" type="button" data-close-auth aria-label="閉じる">×</button>
+        </div>
+        <label class="field">
+          <span>パスワード</span>
+          <input id="passwordInput" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="authError" class="form-error" role="alert"></p>
+        <div class="modal-actions">
+          <button class="plain-button" type="button" data-close-auth>キャンセル</button>
+          <button class="primary-button" type="submit">解除</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="itemDialog" class="modal item-modal">
+      <form id="itemForm" class="modal-card item-form" novalidate>
+        <div class="modal-head">
+          <h2 id="itemDialogTitle">詳細</h2>
+          <button class="icon-close" type="button" data-close-item aria-label="閉じる">×</button>
+        </div>
+
+        <div class="preview-row">
+          <img id="previewImage" class="preview-image" alt="">
+          <div class="preview-summary">
+            <p id="readonlyType" class="pill-label"></p>
+            <h3 id="readonlyName"></h3>
+            <p id="readonlyAmount"></p>
+          </div>
+        </div>
+
+        <div id="standardReadonlyDetails" class="readonly-details">
+          <dl>
+            <div>
+              <dt>状態</dt>
+              <dd id="readonlyCondition"></dd>
+            </div>
+            <div>
+              <dt>備考</dt>
+              <dd id="readonlyNotes"></dd>
+            </div>
+          </dl>
+          <div id="readonlyTags" class="chip-row"></div>
+        </div>
+
+        <div id="historyCardDetails" class="history-card-details"></div>
+
+        <div id="editFields" class="edit-fields">
+          <div class="two-cols">
+            <label class="field">
+              <span>ページ</span>
+              <select id="itemType" required>
+                <option value="shop">ショップ</option>
+                <option value="trade">TRADE募集</option>
+                <option value="history">取引履歴</option>
+              </select>
+            </label>
+            <label id="standardAmountField" class="field">
+              <span id="amountLabel">参考価格</span>
+              <input id="itemAmount" type="number" min="0" step="100" inputmode="numeric">
+            </label>
+            <label id="historyDateField" class="field">
+              <span>購入日</span>
+              <input id="historyDate" type="date">
+            </label>
+          </div>
+
+          <div id="standardFields" class="standard-fields">
+            <label class="field">
+              <span>カード名</span>
+              <input id="itemName" type="text" maxlength="80">
+            </label>
+
+            <label class="field">
+              <span>画像URL</span>
+              <input id="itemImageUrl" type="url" placeholder="https://...">
+            </label>
+
+            <div class="two-cols">
+              <label class="field">
+                <span>状態</span>
+                <input id="itemCondition" type="text" maxlength="80" placeholder="目立つ傷なし">
+              </label>
+              <label class="field">
+                <span>タグ</span>
+                <input id="itemTags" type="text" placeholder="旧裏, 1000円以下">
+              </label>
+            </div>
+
+            <label class="field">
+              <span>備考</span>
+              <textarea id="itemNotes" rows="3" maxlength="1200"></textarea>
+            </label>
+          </div>
+
+          <div id="historyFields" class="history-fields">
+            <label class="field">
+              <span>購入メモ名</span>
+              <input id="historyTitle" type="text" maxlength="80" placeholder="例: 2026年6月 まとめ買い">
+            </label>
+
+            <label class="field">
+              <span>購入画像URL</span>
+              <input id="historyImageUrl" type="url" placeholder="複数枚が写った画像のURL">
+            </label>
+
+            <label class="field">
+              <span>全体の備考</span>
+              <textarea id="historyNotes" rows="2" maxlength="1200"></textarea>
+            </label>
+
+            <div class="history-editor-head">
+              <h3>購入カード</h3>
+              <button id="addHistoryCardButton" class="secondary-action" type="button">カード追加</button>
+            </div>
+            <div id="historyCardsEditor" class="history-cards-editor"></div>
+          </div>
+        </div>
+
+        <p id="itemError" class="form-error" role="alert"></p>
+        <div class="modal-actions">
+          <button id="deleteItemButton" class="danger-button" type="button">削除</button>
+          <span class="action-spacer"></span>
+          <button class="plain-button" type="button" data-close-item>閉じる</button>
+          <button id="saveItemButton" class="primary-button" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="saleDialog" class="modal">
+      <form id="saleForm" class="modal-card">
+        <div class="modal-head">
+          <h2>売却金額</h2>
+          <button class="icon-close" type="button" data-close-sale aria-label="閉じる">×</button>
+        </div>
+        <p id="saleCardName" class="sale-target"></p>
+        <label class="field">
+          <span>売却金額</span>
+          <input id="saleAmount" type="number" min="1" step="1" inputmode="numeric" required>
+        </label>
+        <p id="saleError" class="form-error" role="alert"></p>
+        <div class="modal-actions">
+          <button class="plain-button" type="button" data-close-sale>キャンセル</button>
+          <button class="primary-button" type="submit">売却済みにする</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

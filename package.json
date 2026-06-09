@@ -1,0 +1,14 @@
+{
+  "name": "card-trade-board",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node local-server.mjs",
+    "start": "node local-server.mjs",
+    "build": "node scripts/check-build.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
