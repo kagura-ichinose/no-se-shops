@@ -1,0 +1,73 @@
+[
+  {
+    "id": "sample-shop-1",
+    "type": "shop",
+    "name": "旧裏サンプル ほのお",
+    "imageUrl": "",
+    "price": 900,
+    "budget": null,
+    "condition": "やや傷あり",
+    "notes": "角に白かけがあります。プレイ用として見てください。",
+    "tags": ["旧裏", "1000円以下"],
+    "createdAt": "2026-06-11T00:00:00.000Z",
+    "updatedAt": "2026-06-11T00:00:00.000Z"
+  },
+  {
+    "id": "sample-shop-2",
+    "type": "shop",
+    "name": "光りものサンプル",
+    "imageUrl": "",
+    "price": 2400,
+    "budget": null,
+    "condition": "目立つ傷なし",
+    "notes": "スリーブ保管。表面はきれいめです。",
+    "tags": ["キラ", "美品寄り"],
+    "createdAt": "2026-06-11T00:00:00.000Z",
+    "updatedAt": "2026-06-11T00:00:00.000Z"
+  },
+  {
+    "id": "sample-trade-1",
+    "type": "trade",
+    "name": "探しています サンプルA",
+    "imageUrl": "",
+    "price": null,
+    "budget": 1000,
+    "condition": "プレイ用可",
+    "notes": "折れ・大きな凹みがなければ相談したいです。",
+    "tags": ["1000円以下", "優先"],
+    "createdAt": "2026-06-11T00:00:00.000Z",
+    "updatedAt": "2026-06-11T00:00:00.000Z"
+  },
+  {
+    "id": "sample-history-1",
+    "type": "history",
+    "title": "サンプル購入 まとめ",
+    "name": "サンプル購入 まとめ",
+    "imageUrl": "",
+    "purchaseDate": "2026-06-11",
+    "notes": "複数枚購入のサンプルです。",
+    "cards": [
+      {
+        "id": "sample-history-card-1",
+        "name": "購入カードA",
+        "purchasePrice": 1200,
+        "notes": "表面きれいめ",
+        "sold": false,
+        "salePrice": null,
+        "soldAt": null
+      },
+      {
+        "id": "sample-history-card-2",
+        "name": "購入カードB",
+        "purchasePrice": 800,
+        "notes": "プレイ用",
+        "sold": true,
+        "salePrice": 500,
+        "soldAt": "2026-06-11T00:00:00.000Z"
+      }
+    ],
+    "tags": ["購入履歴"],
+    "createdAt": "2026-06-11T00:00:00.000Z",
+    "updatedAt": "2026-06-11T00:00:00.000Z"
+  }
+]

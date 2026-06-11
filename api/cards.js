@@ -1,6 +1,10 @@
 import { randomUUID, timingSafeEqual } from "node:crypto";
 
 const STORE_KEY = "card-trade-board:v1";
+const GITHUB_API_VERSION = "2022-11-28";
+const GITHUB_DEFAULT_BRANCH = "main";
+const GITHUB_DEFAULT_PATH = "data/cards.json";
+const GITHUB_COMMIT_MESSAGE = "Update card trade board data";
 let memoryItems;
 
 const nowIso = () => new Date().toISOString();
@@ -118,8 +122,205 @@ const SEED_ITEMS = [
   }
 ];
 
+const DEFAULT_ITEMS = [
+  {
+    id: "sample-shop-1",
+    type: "shop",
+    name: "旧裏サンプル ほのお",
+    imageUrl: sampleCardImage("SHOP", "#b96154", "#c7a24f"),
+    price: 900,
+    budget: null,
+    condition: "やや傷あり",
+    notes: "角に白かけがあります。プレイ用として見てください。",
+    tags: ["旧裏", "1000円以下"],
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  },
+  {
+    id: "sample-shop-2",
+    type: "shop",
+    name: "光りものサンプル",
+    imageUrl: sampleCardImage("RARE", "#4b6f79", "#b4bbb8"),
+    price: 2400,
+    budget: null,
+    condition: "目立つ傷なし",
+    notes: "スリーブ保管。表面はきれいめです。",
+    tags: ["キラ", "美品寄り"],
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  },
+  {
+    id: "sample-trade-1",
+    type: "trade",
+    name: "探しています サンプルA",
+    imageUrl: sampleCardImage("WANT", "#536e8e", "#a7b9c2"),
+    price: null,
+    budget: 1000,
+    condition: "プレイ用可",
+    notes: "折れ・大きな凹みがなければ相談したいです。",
+    tags: ["1000円以下", "優先"],
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  },
+  {
+    id: "sample-history-1",
+    type: "history",
+    title: "サンプル購入 まとめ",
+    name: "サンプル購入 まとめ",
+    imageUrl: sampleCardImage("LOT", "#586a7a", "#9f8b68"),
+    purchaseDate: nowIso().slice(0, 10),
+    notes: "複数枚購入のサンプルです。",
+    cards: [
+      {
+        id: "sample-history-card-1",
+        name: "購入カードA",
+        purchasePrice: 1200,
+        notes: "表面きれいめ",
+        sold: false,
+        salePrice: null,
+        soldAt: null
+      },
+      {
+        id: "sample-history-card-2",
+        name: "購入カードB",
+        purchasePrice: 800,
+        notes: "プレイ用",
+        sold: true,
+        salePrice: 500,
+        soldAt: nowIso()
+      }
+    ],
+    tags: ["購入履歴"],
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  }
+];
+
 function cloneItems(items) {
   return JSON.parse(JSON.stringify(items));
+}
+
+function cleanEnv(name) {
+  return String(process.env[name] || "").trim();
+}
+
+function getGithubConfig() {
+  const token = cleanEnv("GITHUB_TOKEN");
+  const owner = cleanEnv("GITHUB_OWNER");
+  const repo = cleanEnv("GITHUB_REPO");
+
+  if (!token || !owner || !repo) return null;
+
+  return {
+    token,
+    owner,
+    repo,
+    branch: cleanEnv("GITHUB_BRANCH") || GITHUB_DEFAULT_BRANCH,
+    path: cleanEnv("GITHUB_DATA_PATH") || cleanEnv("DATA_FILE_PATH") || GITHUB_DEFAULT_PATH
+  };
+}
+
+function hasGithubStore() {
+  return Boolean(getGithubConfig());
+}
+
+function encodeGithubPath(filePath) {
+  return filePath.split("/").map(encodeURIComponent).join("/");
+}
+
+function githubContentsUrl(config, includeRef = false) {
+  const url = new URL(
+    `https://api.github.com/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/contents/${encodeGithubPath(config.path)}`
+  );
+  if (includeRef) url.searchParams.set("ref", config.branch);
+  return url.toString();
+}
+
+function githubHeaders(config) {
+  return {
+    Authorization: `Bearer ${config.token}`,
+    Accept: "application/vnd.github+json",
+    "Content-Type": "application/json",
+    "X-GitHub-Api-Version": GITHUB_API_VERSION,
+    "User-Agent": "card-trade-board"
+  };
+}
+
+function decodeGithubContent(content) {
+  return Buffer.from(String(content || "").replace(/\s/g, ""), "base64").toString("utf8");
+}
+
+function encodeGithubContent(content) {
+  return Buffer.from(content, "utf8").toString("base64");
+}
+
+function parseStoredItems(raw) {
+  const value = raw ? JSON.parse(raw) : [];
+  if (!Array.isArray(value)) {
+    throw new Error("Stored card data must be a JSON array.");
+  }
+  return value;
+}
+
+async function readGithubFile(config) {
+  const response = await fetch(githubContentsUrl(config, true), {
+    headers: githubHeaders(config)
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    throw new Error(payload.message || `GitHub request failed with ${response.status}`);
+  }
+
+  if (Array.isArray(payload) || payload.type !== "file") {
+    throw new Error(`${config.path} must be a JSON file, not a directory.`);
+  }
+
+  try {
+    return {
+      items: parseStoredItems(decodeGithubContent(payload.content)),
+      sha: payload.sha
+    };
+  } catch (error) {
+    throw new Error(`GitHub data file is not valid JSON: ${error.message}`);
+  }
+}
+
+async function writeGithubItems(items, config, message = GITHUB_COMMIT_MESSAGE) {
+  const safeItems = cloneItems(items);
+  const current = await readGithubFile(config);
+  const body = {
+    message,
+    branch: config.branch,
+    content: encodeGithubContent(`${JSON.stringify(safeItems, null, 2)}\n`)
+  };
+
+  if (current?.sha) {
+    body.sha = current.sha;
+  }
+
+  const response = await fetch(githubContentsUrl(config), {
+    method: "PUT",
+    headers: githubHeaders(config),
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.message || `GitHub save failed with ${response.status}`);
+  }
+
+  return safeItems;
+}
+
+async function readGithubItems(config) {
+  const file = await readGithubFile(config);
+  if (file) return cloneItems(file.items);
+
+  await writeGithubItems(DEFAULT_ITEMS, config, "Initialize card trade board data");
+  return cloneItems(DEFAULT_ITEMS);
 }
 
 function hasKv() {
@@ -145,17 +346,22 @@ async function kvCommand(command, ...args) {
 }
 
 async function readItems() {
+  const githubConfig = getGithubConfig();
+  if (githubConfig) {
+    return readGithubItems(githubConfig);
+  }
+
   if (hasKv()) {
     const value = await kvCommand("GET", STORE_KEY);
     if (!value) {
-      await kvCommand("SET", STORE_KEY, JSON.stringify(SEED_ITEMS));
-      return cloneItems(SEED_ITEMS);
+      await kvCommand("SET", STORE_KEY, JSON.stringify(DEFAULT_ITEMS));
+      return cloneItems(DEFAULT_ITEMS);
     }
-    return JSON.parse(value);
+    return parseStoredItems(value);
   }
 
   if (!memoryItems) {
-    memoryItems = cloneItems(SEED_ITEMS);
+    memoryItems = cloneItems(DEFAULT_ITEMS);
   }
 
   return cloneItems(memoryItems);
@@ -163,10 +369,22 @@ async function readItems() {
 
 async function writeItems(items) {
   const safeItems = cloneItems(items);
+  const githubConfig = getGithubConfig();
+  if (githubConfig) {
+    memoryItems = await writeGithubItems(safeItems, githubConfig);
+    return;
+  }
+
   if (hasKv()) {
     await kvCommand("SET", STORE_KEY, JSON.stringify(safeItems));
   }
   memoryItems = safeItems;
+}
+
+function getStorageType() {
+  if (hasGithubStore()) return "github";
+  if (hasKv()) return "kv";
+  return "memory";
 }
 
 function getAdminToken() {
@@ -361,7 +579,7 @@ export default async function handler(req, res) {
       }
 
       const items = await readItems();
-      sendJson(res, 200, { items: publicItemsFor(req, items), storage: hasKv() ? "kv" : "memory" });
+      sendJson(res, 200, { items: publicItemsFor(req, items), storage: getStorageType() });
       return;
     }
 

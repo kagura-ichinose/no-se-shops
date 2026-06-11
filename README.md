@@ -1,6 +1,8 @@
 # Card Trade Board
 
-ショップ用の「いらないカード一覧」と、TRADE募集用の「欲しいもの一覧」を切り替えられるVercel向けWebアプリです。ニューモーフィズムUI、タグ絞り込み、タグ別表示、並び替え、編集パスワード付きの追加・編集・削除を入れています。
+カードの「ショップ」「TRADE募集」「取引履歴」を切り替えて使えるWebサイトです。
+
+Vercel Storageは使わず、共有データはGitHubリポジトリ内の `data/cards.json` に保存します。編集するとVercelのAPIがGitHubへ書き込み、全員が同じ一覧を見られます。
 
 ## ローカル確認
 
@@ -8,31 +10,46 @@
 npm run dev
 ```
 
-ローカルの編集パスワードは `demo-pass` です。
-依存パッケージは使っていないため、npmを使わずに `node local-server.mjs` でも起動できます。
+ローカル確認時の仮編集パスワードは `demo-pass` です。
+
+GitHub保存用の環境変数がない場合、ローカルでは一時データで動きます。サーバーを再起動すると編集内容は初期状態に戻ります。
+
+## 公開に必要なもの
+
+- GitHubリポジトリ
+- Vercelプロジェクト
+- GitHubのFine-grained personal access token
+
+GitHubトークンは、対象リポジトリだけを選び、Repository permissions の `Contents` を `Read and write` にしてください。
 
 ## Vercelの環境変数
 
-編集パスワードとして、VercelのProject Settingsで次のどれかを設定してください。
+VercelのProject Settingsで、次を登録します。
 
 ```text
 ADMIN_TOKEN=好きな編集パスワード
+GITHUB_TOKEN=GitHubのFine-grained personal access token
+GITHUB_OWNER=GitHubのユーザー名またはOrganization名
+GITHUB_REPO=リポジトリ名
+GITHUB_BRANCH=main
+GITHUB_DATA_PATH=data/cards.json
 ```
 
-保存を永続化する場合は、Vercel KV / Upstash Redis互換のREST環境変数も設定します。
+`ADMIN_TOKEN` が、画面右下の「編集」ボタンで入力するパスワードになります。
 
-```text
-KV_REST_API_URL=...
-KV_REST_API_TOKEN=...
-```
+`GITHUB_TOKEN` はブラウザには送られません。VercelのAPIだけが使います。
 
-`KV_REST_API_URL` と `KV_REST_API_TOKEN` がない場合、Vercel本番では編集内容が永続保存されません。GitHubにこのフォルダをpushしてVercelにImportすると、そのまま静的ページ + `/api/cards` のAPI関数として動きます。
+## 公開手順
 
-## 使い方
+1. このフォルダをGitHubリポジトリへpushします。
+2. VercelでそのリポジトリをImportします。
+3. Vercelの環境変数を登録します。
+4. Deployします。
 
-- 「ショップ」と「TRADE募集」を上部ボタンで切り替えます。
-- 「取引履歴」は編集パスワードを解除した人だけが開けます。未解除時はAPIでも履歴データを返しません。
-- 検索、価格順、名前順、タグ絞り込み、タグ別表示が使えます。
-- 右下の「編集」を押し、`ADMIN_TOKEN` に設定した値を入力すると、追加・編集・削除できます。
-- カード画像は画像URLで指定します。未指定または読み込み失敗時はプレースホルダーが表示されます。
-- 取引履歴では、購入ロット画像、購入日、購入カードごとの購入値段・備考を登録できます。カードごとの「売却」から売却金額を入れると売却済みになり、トップに「利益」と「消費」が集計されます。
+デプロイ後、編集ボタンから `ADMIN_TOKEN` を入力すると、追加・編集・削除ができます。保存された内容は `data/cards.json` に反映され、全員に共有されます。
+
+## データファイル
+
+共有データは [data/cards.json](./data/cards.json) です。
+
+公開後に画面から編集すると、このファイルにGitHubのコミットとして保存されます。手動でJSONを編集する場合は、配列形式を保ってください。

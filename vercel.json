@@ -1,7 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "echo \"no build\"",
-  "outputDirectory": ".",
+  "buildCommand": "npm run build",
+  "functions": {
+    "api/cards.js": {
+      "runtime": "nodejs22.x"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
